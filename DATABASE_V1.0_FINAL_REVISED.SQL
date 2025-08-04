@@ -19,12 +19,11 @@ CREATE TABLE tenants (
 -- ============================================
 CREATE TABLE tenant_settings (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),-- Kode tenant untuk referensi
+  tenant_id INT,
   setting_key VARCHAR(50),-- Kunci pengaturan (misal: "path_logo", "default_currency")
   setting_value TEXT,-- Nilai pengaturan (misal: "/images/logo.png", "IDR")
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id));
 
 -- ============================================
 -- TABEL: plans
@@ -32,15 +31,13 @@ CREATE TABLE tenant_settings (
 -- ============================================
 CREATE TABLE plans (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  plan_code VARCHAR(20) UNIQUE NOT NULL,-- Kode unik untuk paket (misal: 'trial', 'basic', 'multi', 'lifetime')
   plan_name VARCHAR(100),-- Nama paket (misal: 'Trial 30 Hari', 'Basic', 'Multi Device', 'Lifetime Access')
   price_monthly INT DEFAULT 0,-- Harga per bulan
   price_yearly INT DEFAULT 0,-- Harga per tahun
   is_trial BOOLEAN DEFAULT FALSE,-- Apakah paket ini trial
   is_lifetime BOOLEAN DEFAULT FALSE,-- Apakah paket ini lifetime
   max_devices INT DEFAULT 1,-- maksimal perangkat yang bisa digunakan
-  description TEXT
-);
+  description TEXT);
 
 -- ============================================
 -- TABEL: subscriptions
@@ -48,17 +45,17 @@ CREATE TABLE plans (
 -- ============================================
 CREATE TABLE subscriptions (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
-  plan_code VARCHAR(20),-- Kode paket langganan 
+  plan_id INT,-- ID paket langganan
+  tenant_id INT,
   start_date DATE,-- Tanggal mulai langganan
   end_date DATE,-- Tanggal akhir langganan, NULL jika paket lifetime
   is_trial BOOLEAN DEFAULT FALSE,
   is_lifetime BOOLEAN DEFAULT FALSE,
   max_devices INT DEFAULT 1,-- Jumlah perangkat yang diizinkan
   status ENUM('active', 'expired', 'cancelled') NOT NULL DEFAULT 'active',-- Status langganan (active, expired, cancelled)
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
-  FOREIGN KEY (plan_code) REFERENCES plans(plan_code)
-);
+   FOREIGN KEY (plan_id) REFERENCES plans(id),
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id)
+ );
 -- ============================================
 -- TABEL: devices
 -- Menyimpan data perangkat yang digunakan oleh tenant, seperti komputer, tablet, atau smartphone 
@@ -68,24 +65,22 @@ CREATE TABLE subscriptions (
 -- pertama kali login tenant akan otomatis membuat data perangkat ini
 CREATE TABLE devices (
   id SERIAL PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  tenant_id INT,
   device_id VARCHAR(100), -- UUID unik dari perangkat
   device_name VARCHAR(100),-- Nama perangkat (misal: "Laptop Budi", "Tablet Siti")
-  registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+  registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP);
 -- ============================================
 -- TABEL: features
 -- Menyimpan fitur add-on yang tersedia untuk tenant, dengan harga per bulan, tahunan, atau sekali bayar
 -- ============================================
 CREATE TABLE features (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  feature_code VARCHAR(20) UNIQUE NOT NULL,-- Kode unik untuk fitur (misal: 'inventory', 'reporting', 'kasbon')
+  feature_id INT,-- ID fitur untuk referensi
   feature_name VARCHAR(100),-- Nama fitur (misal: 'Manajemen Stok', 'Laporan Keuangan', 'Kasbon Pelanggan')
   price_monthly INT DEFAULT 0,
   price_yearly INT DEFAULT 0,
-  price_onetime INT DEFAULT NULL,-- Harga sekali bayar jika ada
-  description TEXT
-);
+  price_onetime INT DEFAULT NULL,-- Harga sekali bayar jika ada 
+  description TEXT);
 
 -- ============================================
 -- TABEL: tenant_features 
@@ -93,13 +88,13 @@ CREATE TABLE features (
 -- masa berlaku fitur ini tergantung pada paket langganan yang diambil tenant, jika paket berakhir maka fitur ini juga berakhir
 -- ============================================
 CREATE TABLE tenant_features (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
-  feature_code VARCHAR(20),
+   id INT AUTO_INCREMENT PRIMARY KEY,
+  feature_id INT,-- ID fitur add-on yang diaktifkan
+  tenant_id INT, 
   activated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',-- Status fitur (active, inactive)
-   FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
-  FOREIGN KEY (feature_code) REFERENCES features(feature_code)
+  FOREIGN KEY (feature_id) REFERENCES features(id),
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id)
 );
 
 -- ============================================
@@ -108,18 +103,17 @@ CREATE TABLE tenant_features (
 -- berisi data tagihan untuk paket langganan dan fitur add-on
 -- ============================================
 CREATE TABLE billing_records (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
-  plan_code VARCHAR(20),-- Kode paket langganan
-  invoice_date DATE,-- Tanggal tagihan
-  due_date DATE,-- Tanggal jatuh tempo
-  amount INT,-- Jumlah tagihan
-  is_trial BOOLEAN DEFAULT FALSE,-- Apakah ini tagihan untuk masa trial
+   id INT AUTO_INCREMENT PRIMARY KEY,
+   plan_id INT,
+   tenant_id INT,
+   invoice_date DATE,-- Tanggal tagihan
+   due_date DATE,-- Tanggal jatuh tempo
+   amount INT,-- Jumlah tagihan
+   is_trial BOOLEAN DEFAULT FALSE,-- Apakah ini tagihan untuk masa trial
   is_lifetime BOOLEAN DEFAULT FALSE,-- Apakah ini tagihan untuk paket lifetime
   status ENUM('unpaid', 'paid', 'overdue') NOT NULL DEFAULT 'unpaid',-- Status pembayaran (unpaid, paid, overdue  )
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
-  FOREIGN KEY (plan_code) REFERENCES plans(plan_code)
-);
+  FOREIGN KEY (plan_id) REFERENCES plans(id),
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id));
 
 
 -- ============================================
@@ -129,13 +123,12 @@ CREATE TABLE billing_records (
 -- ============================================
 CREATE TABLE branches (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  tenant_id INT,
   branch_name VARCHAR(100),
   address TEXT,
   phone_number VARCHAR(20),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id));
 
 -- ============================================
 -- TABEL: branch_settings jika ada cabang
@@ -160,16 +153,15 @@ CREATE TABLE branch_settings (
 -- ============================================
 CREATE TABLE users (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),-- Kode tenant untuk referensi
+  tenant_id INT,
   branch_id INT,--  ID cabang tempat pengguna berada
   username VARCHAR(50),-- Nama pengguna untuk login
   password_hash TEXT,
   role_id INT,-- ID peran pengguna (misal: admin, kasir, manajer)
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
   FOREIGN KEY (branch_id) REFERENCES branches(id),
-  FOREIGN KEY (role_id) REFERENCES roles(id)
-);
+  FOREIGN KEY (role_id) REFERENCES roles(id));
 
 
 -- ============================================
@@ -179,14 +171,13 @@ CREATE TABLE users (
 -- ============================================
 CREATE TABLE device_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
-  device_id VARCHAR(100),-- ID unik perangkat (misal: UUID)
+  tenant_id INT,
+  device_id VARCHAR(100),-- ID unik perangkat (misal: UID)
   user_id INT,
   action VARCHAR(100), --
   timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
-  FOREIGN KEY (user_id) REFERENCES users(id)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+  FOREIGN KEY (user_id) REFERENCES users(id));
 
 -- ============================================
 -- TABEL: activity_logs
@@ -195,14 +186,13 @@ CREATE TABLE device_logs (
 -- ============================================
 CREATE TABLE activity_logs (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  tenant_id INT,
   user_id INT,
   activity TEXT,-- Deskripsi aktivitas yang dilakukan (misal: "Menambahkan produk baru", "Mengedit transaksi penjualan")
   module VARCHAR(50),-- Modul sistem tempat aktivitas dilakukan (misal: "Inventory", "Sales")
   timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
-  FOREIGN KEY (user_id) REFERENCES users(id)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+  FOREIGN KEY (user_id) REFERENCES users(id));
 
 -- ============================================
 -- TABEL: notifications
@@ -211,14 +201,13 @@ CREATE TABLE activity_logs (
 -- ============================================
 CREATE TABLE notifications (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  tenant_id INT,
   title VARCHAR(100),-- Judul notifikasi
   message TEXT,
   type VARCHAR(20),
   is_read BOOLEAN DEFAULT FALSE,-- Status notifikasi (apakah sudah dibaca atau belum)
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id));
 
 -- ============================================
 -- TABEL: roles
@@ -227,12 +216,11 @@ CREATE TABLE notifications (
 -- ============================================
 CREATE TABLE roles (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  tenant_id INT,
   role_name VARCHAR(50),-- Nama peran (misal: "Admin", "Kasir", "Manajer")
   description TEXT,-- Deskripsi peran
   is_default BOOLEAN DEFAULT FALSE,-- Apakah peran ini adalah peran default untuk tenant
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id));
 
 -- ============================================
 -- TABEL: permissions
@@ -277,13 +265,14 @@ CREATE TABLE vendor_admins (
 -- Menyimpan log aktivitas admin vendor, seperti penambahan tenant, pengaturan sistem, dll
 -- ============================================
 CREATE TABLE audit_vendor_actions (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+   id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT, 
   admin_id INT,
   action TEXT,
-  target_tenant_code VARCHAR(20),
+  target_
   timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (admin_id) REFERENCES vendor_admins(id)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id));
 
 -- ============================================
 -- TABEL: support_tickets
@@ -291,14 +280,13 @@ CREATE TABLE audit_vendor_actions (
 -- setiap tiket terkait dengan tenant tertentu dan memiliki status (open, closed, pending)
 -- ============================================
 CREATE TABLE support_tickets (
-  id INT AUTO_INCREMENT PRIMARY KEY,  
-  tenant_code VARCHAR(20),
+   id INT AUTO_INCREMENT PRIMARY KEY,
+  tenant_id INT, 
   subject VARCHAR(100),
   message TEXT,
   status ENUM('open','closed', 'pending') NOT NULL DEFAULT 'open', -- Status tiket (open, closed, pending)
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id));
 
 -- POS Sistem
 -- ============================================
@@ -307,8 +295,10 @@ CREATE TABLE support_tickets (
 -- ============================================
 CREATE TABLE products (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),-- Kode tenant untuk referensi
+  uuid VARCHAR(36) NOT NULL UNIQUE, -- UUID unik untuk produk, untuk sinkronisasi online/offline
+  tenant_id INT,   
   branch_id INT,--  ID cabang tempat produk tersedia
+  sku VARCHAR(100) DEFAULT NULL,  -- sku/barcode unik, validasi unik oleh backend
   name VARCHAR(100),
   category_id INT,
   stock INT DEFAULT 0,-- Jumlah stok produk
@@ -316,9 +306,9 @@ CREATE TABLE products (
   unit VARCHAR(20),
   foto_path VARCHAR(255),-- Path foto produk
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
-  FOREIGN KEY (branch_id) REFERENCES branches(id)
-);
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+  FOREIGN KEY (branch_id) REFERENCES branches(id));
 -- ============================================
 -- TABEL: product_units
 -- Menyimpan data unit dan harga per unit produk
@@ -338,11 +328,10 @@ CREATE TABLE product_units (
 -- ============================================
 CREATE TABLE categories (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  tenant_id INT,
   name VARCHAR(100),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id));
 
 -- ============================================
 -- TABEL: penjualan
@@ -352,17 +341,17 @@ CREATE TABLE categories (
 -- ============================================
 CREATE TABLE penjualan (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  uuid VARCHAR(36) NOT NULL UNIQUE,
+  tenant_id INT,
   branch_id INT,
   user_id INT,--- ID pengguna yang melakukan penjualan
   date DATE,
   total_amount DECIMAL(12,2),
   payment_method VARCHAR(50),-- Metode pembayaran (misal: 'cash', 'credit_card', 'transfer')
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
   FOREIGN KEY (branch_id) REFERENCES branches(id),
-  FOREIGN KEY (user_id) REFERENCES users(id)
-);
+  FOREIGN KEY (user_id) REFERENCES users(id));
 
 -- ============================================
 -- TABEL: penjualan_items
@@ -370,6 +359,8 @@ CREATE TABLE penjualan (
 -- ============================================
 CREATE TABLE penjualan_items (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  uuid VARCHAR(36) NOT NULL UNIQUE,
+  uuid_penjualan VARCHAR(36),
   penjualan_id INT,
   product_id INT,
   quantity INT,
@@ -385,17 +376,17 @@ CREATE TABLE penjualan_items (
 -- ============================================
 CREATE TABLE cash_transactions (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  uuid VARCHAR(36) NOT NULL UNIQUE,
+  tenant_id INT,
   branch_id INT,
   user_id INT,
   type VARCHAR(20), -- "in" or "out"
   amount DECIMAL(12,2),
   description TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
   FOREIGN KEY (branch_id) REFERENCES branches(id),
-  FOREIGN KEY (user_id) REFERENCES users(id)
-);
+  FOREIGN KEY (user_id) REFERENCES users(id));
 
 -- ============================================
 -- TABEL: employee_loans
@@ -403,15 +394,15 @@ CREATE TABLE cash_transactions (
 -- ============================================
 CREATE TABLE employee_loans (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  uuid VARCHAR(36) NOT NULL UNIQUE,
+  tenant_id INT,
   user_id INT,
   amount DECIMAL(12,2),
   status ENUM('unpaid', 'paid', 'overdue') NOT NULL DEFAULT 'unpaid',-- Status kasbon (unpaid, paid, overdue)
   due_date DATE,-- Tanggal jatuh tempo kasbon
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
-  FOREIGN KEY (user_id) REFERENCES users(id)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+  FOREIGN KEY (user_id) REFERENCES users(id));
 
 -- ============================================
 -- TABEL: customer_loans
@@ -420,16 +411,16 @@ CREATE TABLE employee_loans (
 -- setiap kasbon terkait dengan tenant tertentu 
 -- ============================================
 CREATE TABLE customer_loans (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),  
+  id INT AUTO_INCREMENT PRIMARY KEY,  
+  uuid VARCHAR(36) NOT NULL UNIQUE,
+  tenant_id INT,
   customer_name VARCHAR(100),
   phone_number VARCHAR(20),
   amount DECIMAL(12,2),
   status ENUM('unpaid', 'paid', 'overdue') NOT NULL DEFAULT 'unpaid',-- Status kasbon (unpaid, paid, overdue)
   due_date DATE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id));
 
 -- ============================================
 -- TABEL: stock_notifications
@@ -437,14 +428,13 @@ CREATE TABLE customer_loans (
 -- ============================================
 CREATE TABLE stock_notifications (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  tenant_id INT,
   product_id INT,
   type VARCHAR(20), -- "low_stock" or "fast_selling"
   message TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
-  FOREIGN KEY (product_id) REFERENCES products(id)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+  FOREIGN KEY (product_id) REFERENCES products(id));
 
 -- ============================================
 -- TABEL: profit_loss_reports
@@ -452,16 +442,15 @@ CREATE TABLE stock_notifications (
 -- ============================================
 CREATE TABLE profit_loss_reports (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  tenant_id INT,
   branch_id INT,
   report_date DATE,
   total_income DECIMAL(12,2),
   total_expense DECIMAL(12,2),
   net_profit DECIMAL(12,2),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
-  FOREIGN KEY (branch_id) REFERENCES branches(id)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
+  FOREIGN KEY (branch_id) REFERENCES branches(id));
 
 -- ============================================
 -- TABEL: expense_categories
@@ -469,11 +458,10 @@ CREATE TABLE profit_loss_reports (
 -- ============================================
 CREATE TABLE expense_categories (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  tenant_id INT,  
   name VARCHAR(100),-- Nama kategori pengeluaran (misal: "Operasional", "Promosi", "Gaji")
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code)
-);
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id));
 
 -- ============================================
 -- TABEL: expenses
@@ -481,17 +469,16 @@ CREATE TABLE expense_categories (
 -- ============================================
 CREATE TABLE expenses (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  tenant_code VARCHAR(20),
+  tenant_id INT,
   branch_id INT,
   category_id INT,-- ID kategori pengeluaran
   amount DECIMAL(12,2),-- Jumlah pengeluaran
   description TEXT,-- 
   expense_date DATE NOT NULL DEFAULT CURRENT_DATE,-- Tanggal pengeluaran
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (tenant_code) REFERENCES tenants(tenant_code),
+  FOREIGN KEY (tenant_id) REFERENCES tenants(id),
   FOREIGN KEY (branch_id) REFERENCES branches(id),
-  FOREIGN KEY (category_id) REFERENCES expense_categories(id)
-);
+  FOREIGN KEY (category_id) REFERENCES expense_categories(id));
 
 
 
@@ -530,3 +517,120 @@ INSERT INTO subscriptions (tenant_code, plan_code, start_date, end_date, is_tria
 INSERT INTO billing_records (tenant_code, plan_code, invoice_date, due_date, amount, is_trial, is_lifetime, status) VALUES
 ('081234567890', 'basic', '2025-01-01', '2025-01-07', 250000, FALSE, FALSE, 'paid'),
 ('081234567890', 'basic', '2025-02-01', '2025-02-07', 250000, FALSE, FALSE, 'paid');
+
+
+-- =========================
+-- INDEX OPTIMIZATION
+-- =========================
+
+-- Tenants
+CREATE INDEX idx_tenants_tenan_id ON tenants(id); -- Mempercepat pencarian tenant berdasarkan kode tenant
+
+-- Tenant Settings
+CREATE INDEX idx_tenant_settings_tenan_id ON tenant_settings(tenant_id); -- Mempercepat filter pengaturan per tenant
+
+-- Subscriptions
+CREATE INDEX idx_subscriptions_tenan_id ON subscriptions(tenant_id); -- Mempercepat pencarian langganan per tenant
+CREATE INDEX idx_subscriptions_plan_code ON subscriptions(plan_code); -- Mempercepat pencarian langganan per paket
+
+-- Devices
+CREATE INDEX idx_devices_tenan_id ON devices(tenant_id); -- Mempercepat pencarian perangkat per tenant
+CREATE INDEX idx_devices_device_id ON devices(device_id); -- Mempercepat pencarian perangkat berdasarkan device_id
+
+-- Tenant Features
+CREATE INDEX idx_tenant_features_tenan_id ON tenant_features(tenant_id); -- Mempercepat pencarian fitur per tenant
+CREATE INDEX idx_tenant_features_feature_code ON tenant_features(feature_code); -- Mempercepat pencarian fitur berdasarkan kode fitur
+
+-- Billing Records
+CREATE INDEX idx_billing_records_tenan_id ON billing_records(tenant_id); -- Mempercepat pencarian tagihan per tenant
+CREATE INDEX idx_billing_records_plan_code ON billing_records(plan_code); -- Mempercepat pencarian tagihan per paket
+
+-- Branches
+CREATE INDEX idx_branches_tenan_id ON branches(tenant_id); -- Mempercepat pencarian cabang per tenant
+
+-- Branch Settings
+CREATE INDEX idx_branch_settings_branch_id ON branch_settings(branch_id); -- Mempercepat pencarian pengaturan per cabang
+
+-- Users
+CREATE INDEX idx_users_tenan_id ON users(tenant_id); -- Mempercepat pencarian user per tenant
+CREATE INDEX idx_users_branch_id ON users(branch_id); -- Mempercepat pencarian user per cabang
+CREATE INDEX idx_users_role_id ON users(role_id); -- Mempercepat pencarian user per role
+
+-- Device Logs
+CREATE INDEX idx_device_logs_tenan_id ON device_logs(tenant_id); -- Mempercepat pencarian log perangkat per tenant
+CREATE INDEX idx_device_logs_user_id ON device_logs(user_id); -- Mempercepat pencarian log perangkat per user
+
+-- Activity Logs
+CREATE INDEX idx_activity_logs_tenan_id ON activity_logs(tenant_id); -- Mempercepat pencarian log aktivitas per tenant
+CREATE INDEX idx_activity_logs_user_id ON activity_logs(user_id); -- Mempercepat pencarian log aktivitas per user
+
+-- Notifications
+CREATE INDEX idx_notifications_tenan_id ON notifications(tenant_id); -- Mempercepat pencarian notifikasi per tenant
+
+-- Roles
+CREATE INDEX idx_roles_tenan_id ON roles(tenant_id); -- Mempercepat pencarian role per tenant
+
+-- Role Permissions
+CREATE INDEX idx_role_permissions_role_id ON role_permissions(role_id); -- Mempercepat pencarian hak akses per role
+CREATE INDEX idx_role_permissions_permission_id ON role_permissions(permission_id); -- Mempercepat pencarian role berdasarkan permission
+
+-- Audit Vendor Actions
+CREATE INDEX idx_audit_vendor_actions_admin_id ON audit_vendor_actions(admin_id); -- Mempercepat pencarian log aksi admin vendor
+
+-- Support Tickets
+CREATE INDEX idx_support_tickets_tenan_id ON support_tickets(tenant_id); -- Mempercepat pencarian tiket dukungan per tenant
+
+-- Products
+CREATE INDEX idx_products_tenan_id ON products(tenant_id); -- Mempercepat pencarian produk per tenant
+CREATE INDEX idx_products_branch_id ON products(branch_id); -- Mempercepat pencarian produk per cabang
+CREATE INDEX idx_products_category_id ON products(category_id); -- Mempercepat pencarian produk per kategori
+CREATE INDEX idx_sku_per_branch ON products (tenant_id, branch_id, sku); -- Index non-unique untuk bantu pencarian cepat
+
+
+-- Product Units
+CREATE INDEX idx_product_units_product_id ON product_units(product_id); -- Mempercepat pencarian unit produk per produk
+
+-- Categories
+CREATE INDEX idx_categories_tenan_id ON categories(tenant_id); -- Mempercepat pencarian kategori per tenant
+
+-- Penjualan
+CREATE INDEX idx_penjualan_tenan_id ON penjualan(tenant_id); -- Mempercepat pencarian penjualan per tenant
+CREATE INDEX idx_penjualan_branch_id ON penjualan(branch_id); -- Mempercepat pencarian penjualan per cabang
+CREATE INDEX idx_penjualan_user_id ON penjualan(user_id); -- Mempercepat pencarian penjualan per user
+
+-- Penjualan Items
+CREATE INDEX idx_penjualan_items_penjualan_id ON penjualan_items(penjualan_id); -- Mempercepat pencarian item penjualan per transaksi
+CREATE INDEX idx_penjualan_items_product_id ON penjualan_items(product_id); -- Mempercepat pencarian item penjualan per produk
+
+-- Cash Transactions
+CREATE INDEX idx_cash_transactions_tenan_id ON cash_transactions(tenant_id); -- Mempercepat pencarian transaksi kas per tenant
+CREATE INDEX idx_cash_transactions_branch_id ON cash_transactions(branch_id); -- Mempercepat pencarian transaksi kas per cabang
+CREATE INDEX idx_cash_transactions_user_id ON cash_transactions(user_id); -- Mempercepat pencarian transaksi kas per user
+
+-- Employee Loans
+CREATE INDEX idx_employee_loans_tenan_id ON employee_loans(tenant_id); -- Mempercepat pencarian kasbon karyawan per tenant
+CREATE INDEX idx_employee_loans_user_id ON employee_loans(user_id); -- Mempercepat pencarian kasbon karyawan per user
+
+-- Customer Loans
+CREATE INDEX idx_customer_loans_tenan_id ON customer_loans(tenant_id); -- Mempercepat pencarian kasbon pelanggan per tenant
+
+-- Stock Notifications
+CREATE INDEX idx_stock_notifications_tenan_id ON stock_notifications(tenant_id); -- Mempercepat pencarian notifikasi stok per tenant
+CREATE INDEX idx_stock_notifications_product_id ON stock_notifications(product_id); -- Mempercepat pencarian notifikasi stok per produk
+
+-- Profit Loss Reports
+CREATE INDEX idx_profit_loss_reports_tenan_id ON profit_loss_reports(tenant_id); -- Mempercepat pencarian laporan laba rugi per tenant
+CREATE INDEX idx_profit_loss_reports_branch_id ON profit_loss_reports(branch_id); -- Mempercepat pencarian laporan laba rugi per cabang
+
+-- Expense Categories
+CREATE INDEX idx_expense_categories_tenan_id ON expense_categories(tenant_id); -- Mempercepat pencarian kategori pengeluaran per tenant
+
+-- Expenses
+CREATE INDEX idx_expenses_tenan_id ON expenses(tenant_id); -- Mempercepat pencarian pengeluaran per tenant
+CREATE INDEX idx_expenses_branch_id ON expenses(branch_id); -- Mempercepat pencarian pengeluaran per cabang
+CREATE INDEX idx_expenses_category_id ON expenses(category_id); -- Mempercepat pencarian pengeluaran per kategori
+
+-- =========================
+-- END OF INDEX OPTIMIZATION
+-- =========================
+
