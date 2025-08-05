@@ -1,0 +1,11 @@
+1. awal
+   git init
+   git add .
+   git commit -m "awal"
+   git push -u origin main
+
+
+2. selanjutnya
+git add .
+git commit -m "Update terbaru"
+git push

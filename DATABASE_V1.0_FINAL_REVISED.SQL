@@ -305,6 +305,7 @@ CREATE TABLE products (
   price DECIMAL(12,2),
   unit VARCHAR(20),
   foto_path VARCHAR(255),-- Path foto produk
+  sync_source ENUM('offline', 'online') DEFAULT 'online', -- Sumber data  (offline atau online)
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (tenant_id) REFERENCES tenants(id),
@@ -315,7 +316,9 @@ CREATE TABLE products (
 -- ============================================
 CREATE TABLE product_units (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  uuid VARCHAR(36) NOT NULL UNIQUE,
   product_id INT,
+  uuid_product VARCHAR(36),
   unit_name VARCHAR(50),-- Nama unit (misal: 'pcs', 'kg', 'liter')
   unit_price DECIMAL(12,2),-- Harga per unit
   conversion_rate DECIMAL(12,2),-- Rasio konversi ke unit dasar (misal: 1 kg = 1000 gram)
@@ -341,7 +344,7 @@ CREATE TABLE categories (
 -- ============================================
 CREATE TABLE penjualan (
   id INT AUTO_INCREMENT PRIMARY KEY,
-  uuid VARCHAR(36) NOT NULL UNIQUE,
+  uuid VARCHAR(36) NOT NULL UNIQUE,-- uuid dari transaksi penjualan, untuk sinkronisasi online/offline
   tenant_id INT,
   branch_id INT,
   user_id INT,--- ID pengguna yang melakukan penjualan
@@ -351,7 +354,8 @@ CREATE TABLE penjualan (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (tenant_id) REFERENCES tenants(id),
   FOREIGN KEY (branch_id) REFERENCES branches(id),
-  FOREIGN KEY (user_id) REFERENCES users(id));
+  FOREIGN KEY (user_id) REFERENCES users(id)
+  );
 
 -- ============================================
 -- TABEL: penjualan_items
@@ -458,6 +462,7 @@ CREATE TABLE profit_loss_reports (
 -- ============================================
 CREATE TABLE expense_categories (
   id INT AUTO_INCREMENT PRIMARY KEY,
+  uuid VARCHAR(36) NOT NULL UNIQUE,
   tenant_id INT,  
   name VARCHAR(100),-- Nama kategori pengeluaran (misal: "Operasional", "Promosi", "Gaji")
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -472,6 +477,7 @@ CREATE TABLE expenses (
   tenant_id INT,
   branch_id INT,
   category_id INT,-- ID kategori pengeluaran
+  uuid_category VARCHAR(36), -- uuid expense category untuk sinkronisasi online/offline
   amount DECIMAL(12,2),-- Jumlah pengeluaran
   description TEXT,-- 
   expense_date DATE NOT NULL DEFAULT CURRENT_DATE,-- Tanggal pengeluaran
